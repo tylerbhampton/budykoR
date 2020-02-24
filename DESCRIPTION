@@ -1,7 +1,7 @@
 Package: budyko
 Type: Package
 Title: Computes Budyko statistics, fits, and makes plots
-Version: 0.1.0
+Version: 1.0.0
 Author: Tyler B. Hampton
 Maintainer: Tyler B. Hampton <email@email.com>
 Description: Contains functions for fitting several Budyko-type curves to annual watershed data.
