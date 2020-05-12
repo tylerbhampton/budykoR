@@ -4,7 +4,9 @@
 \name{testdata}
 \alias{testdata}
 \title{Simulated Data with Fu Budyko omega=2}
-\format{An object of class \code{data.frame} with 30 rows and 3 columns.}
+\format{
+An object of class \code{data.frame} with 30 rows and 3 columns.
+}
 \usage{
 testdata
 }

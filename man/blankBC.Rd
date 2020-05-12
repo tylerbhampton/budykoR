@@ -4,7 +4,9 @@
 \name{blankBC}
 \alias{blankBC}
 \title{Blank Budyko Curve Graph}
-\format{An object of class \code{gg} (inherits from \code{ggplot}) of length 9.}
+\format{
+An object of class \code{gg} (inherits from \code{ggplot}) of length 9.
+}
 \usage{
 blankBC
 }
