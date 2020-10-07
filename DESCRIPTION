@@ -1,12 +1,12 @@
 Package: budyko
 Type: Package
 Title: Computes Budyko statistics, fits, and makes plots
-Version: 1.0.0
+Version: 1.1.0
 Author: Tyler B. Hampton
 Maintainer: Tyler B. Hampton <tylerbhampton@gmail.com>
 Description: Contains functions for fitting several Budyko-type curves to annual watershed data.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Imports: ggplot2
+Imports: ggplot2, investr
 RoxygenNote: 7.1.0

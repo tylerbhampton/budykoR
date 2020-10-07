@@ -98,7 +98,7 @@ budyko_sim=function(p=2,fit=NULL,method="budyko",res=0.01,hshift=FALSE,hs=NULL,s
 #' @md
 #' @export
 
-budyko_fit=function(data,method,dif="rsq",res=NULL,hshift=FALSE,hs=NULL,silent=FALSE){
+budyko_fit=function(data,method,dif="nls",res=NULL,hshift=FALSE,hs=NULL,silent=FALSE){
   if(!(tolower(method) %in% c("wang-tang","fu","turc-pike","zhang")) & silent==FALSE){
     print("Error: unrecognized method")
   }else{
@@ -108,41 +108,69 @@ budyko_fit=function(data,method,dif="rsq",res=NULL,hshift=FALSE,hs=NULL,silent=F
     data=data[!is.na(data$AET.P),]
     data=data[data$PET.P<=20,]
     data=data[order(data$PET.P),]
-    if(tolower(method)=="fu"){testval=c(seq(1,3,res),seq(3,10,min(0.1,res*10)))}
-    if(tolower(method)=="turc-pike"){testval=c(seq(0,2,res),seq(2,10,min(0.1,res*10)))}
-    if(tolower(method)=="wang-tang"){testval=c(seq(-10,(-res),min(0.1,res*10)),seq(res,1,res))}
-    if(tolower(method)=="zhang"){testval=c(seq(-0.05,0.99,0.01),seq(1,5,0.1))}
-    if(hshift==FALSE){
-      fiterr=do.call("rbind",lapply(testval,function(p){
-        fit=as.data.frame(c("param"=p,"mae"=0,"rsq"=0,hshift=0))
-        test=budyko_sim(fit=fit,method=method,res=res)
-        AETPest=sapply((data$PET.P),function(z){test$AET.P[round(test$PET.P,-log10(res))==round(z,-log10(res))]})
-        return(data.frame(
-          rsq=1-summary(lm(AETPest~data$AET.P))$r.squared,
-          mae=mean(abs(data$AET.P-AETPest))
-        ))
-      }))
-      wch=which.min(fiterr[,dif])[1]
-      fitdat=as.data.frame(c(
-        "param"=testval[wch],
-        "mae"=round(fiterr$mae[wch],4),
-        "rsq"=1-round(fiterr$rsq[wch],4),
-        "hs"=0))
-    }else{
-      if(is.null(hs)){
-        hs=c(seq(0,1,0.1),seq(1,ifelse(mean(data$PET.P,na.rm=TRUE)<=1,1,ceiling(mean(data$PET.P,na.rm=TRUE))),0.1))
-      }else{hs=hs}
 
-      difM=matrix(data=NA,nrow=length(hs),ncol=length(testval))
-      for(r in 1:nrow(difM)){
-        difM[r,]=sapply(testval,function(p){
-          fit=as.data.frame(c("param"=p,"err"=0,hshift=hs[r]))
-          test=budyko_sim(fit=fit,method=method,res=res,hshift=TRUE)
-          difma=mean(abs(data$AET.P-sapply((data$PET.P),function(z){test$AET.P[round(test$PET.P,-log10(res))==round(z,-log10(res))]})))
-          return(difma)
-        })
+    if(dif=="nls"){
+      formula = list(
+        "fu"="AET.P~1+PET.P-(1+(PET.P)^p)^(1/p)",
+        "turc-pike"="AET.P~(1+(PET.P)^(-p))^(-1/p)",
+        "wang-tang"="AET.P~(1+PET.P-((1+PET.P)^2-4*p*(2-p)*PET.P)^(1/2))/(2*p*(2-p))",
+        "zhang"="AET.P~(1+p*PET.P)/(1+p*PET.P+(PET.P^(-1)))"
+      )[[tolower(method)]]
+      startval = list(
+        "fu"=list(p=2.7),
+        "turc-pike"=list(p=1.9),
+        "wang-tang"=list(p=0.59),
+        "zhang"=list(p=1.4)
+      )[[tolower(method)]]
+      budykoNLS = stats::nls(formula = formula,
+                             start = startval,
+                             data = data)
+      paramval = summary(budykoNLS)$coefficients[[1]]
+      fitmae = mean(abs(residuals(budykoNLS)))
+      fitrsq = summary(lm(data$AET.P~fitted(budykoNLS)))$r.squared
+      fitdat=as.data.frame(c(
+        "param"=paramval,
+        "mae"=round(fitmae,4),
+        "rsq"=round(fitrsq,4),
+        "hs"=0))
+    }
+    if(dif %in% c("rsq","mae")){
+      if(tolower(method)=="fu"){testval=c(seq(1,3,res),seq(3,10,min(0.1,res*10)))}
+      if(tolower(method)=="turc-pike"){testval=c(seq(0,2,res),seq(2,10,min(0.1,res*10)))}
+      if(tolower(method)=="wang-tang"){testval=c(seq(-10,(-res),min(0.1,res*10)),seq(res,1,res))}
+      if(tolower(method)=="zhang"){testval=c(seq(-0.05,0.99,0.01),seq(1,5,0.1))}
+      if(hshift==FALSE){
+        fiterr=do.call("rbind",lapply(testval,function(p){
+          fit=as.data.frame(c("param"=p,"mae"=0,"rsq"=0,hshift=0))
+          test=budyko_sim(fit=fit,method=method,res=res)
+          AETPest=sapply((data$PET.P),function(z){test$AET.P[round(test$PET.P,-log10(res))==round(z,-log10(res))]})
+          return(data.frame(
+            rsq=1-summary(lm(AETPest~data$AET.P))$r.squared,
+            mae=mean(abs(data$AET.P-AETPest))
+          ))
+        }))
+        wch=which.min(fiterr[,dif])[1]
+        fitdat=as.data.frame(c(
+          "param"=testval[wch],
+          "mae"=round(fiterr$mae[wch],4),
+          "rsq"=1-round(fiterr$rsq[wch],4),
+          "hs"=0))
+      }else{
+        if(is.null(hs)){
+          hs=c(seq(0,1,0.1),seq(1,ifelse(mean(data$PET.P,na.rm=TRUE)<=1,1,ceiling(mean(data$PET.P,na.rm=TRUE))),0.1))
+        }else{hs=hs}
+        
+        difM=matrix(data=NA,nrow=length(hs),ncol=length(testval))
+        for(r in 1:nrow(difM)){
+          difM[r,]=sapply(testval,function(p){
+            fit=as.data.frame(c("param"=p,"err"=0,hshift=hs[r]))
+            test=budyko_sim(fit=fit,method=method,res=res,hshift=TRUE)
+            difma=mean(abs(data$AET.P-sapply((data$PET.P),function(z){test$AET.P[round(test$PET.P,-log10(res))==round(z,-log10(res))]})))
+            return(difma)
+          })
+        }
+        fitdat=as.data.frame(c("param"=testval[which(difM==min(difM,na.rm=TRUE),arr.ind=TRUE)[1,][2]],"err"=round(min(difM,na.rm=TRUE)[1],4),"hshift"=hs[which(difM==min(difM,na.rm=TRUE),arr.ind=TRUE)[1,][1]]))
       }
-      fitdat=as.data.frame(c("param"=testval[which(difM==min(difM,na.rm=TRUE),arr.ind=TRUE)[1,][2]],"err"=round(min(difM,na.rm=TRUE)[1],4),"hshift"=hs[which(difM==min(difM,na.rm=TRUE),arr.ind=TRUE)[1,][1]]))
     }
     names(fitdat)=method
     return(fitdat)
@@ -173,16 +201,56 @@ budyko_fit=function(data,method,dif="rsq",res=NULL,hshift=FALSE,hs=NULL,silent=F
 #' @md
 #' @export
 
-budyko_errbounds=function(fit,res=0.1,hshift=FALSE){
-  err=fit[2,]
-  if(hshift==TRUE){hs=fit[4,]}else{hs=0}
-  fitdata=budyko_sim(fit=fit,method = tolower(names(fit)),hshift = hshift,res = res)
-  fiterrorbounds=data.frame(
-    PET.P=c(fitdata$PET.P,rev(fitdata$PET.P)),
-    AET.P=c((fitdata$AET.P+err),rev(fitdata$AET.P-err))
-  )
-  fiterrorbounds$AET.P[fiterrorbounds$AET.P>=1]=1
-  fiterrorbounds$AET.P[fiterrorbounds$AET.P<=0]=0
-  for(p in seq(0,1,0.01)){fiterrorbounds$AET.P[fiterrorbounds$PET.P==p & fiterrorbounds$AET.P>=p]=p}
+budyko_errbounds=function(fit=NULL,res=0.1,hshift=FALSE,
+                          dif="nls",data=NULL,alpha=0.05){
+  if(dif=="nls"){
+    data=data[,c("AET.P","PET.P")]
+    data=data[!is.na(data$AET.P),]
+    data=data[data$PET.P<=20,]
+    data=data[order(data$PET.P),]
+    formula = list(
+      "fu"="AET.P~1+PET.P-(1+(PET.P)^p)^(1/p)",
+      "turc-pike"="AET.P~(1+(PET.P)^(-p))^(-1/p)",
+      "wang-tang"="AET.P~(1+PET.P-((1+PET.P)^2-4*p*(2-p)*PET.P)^(1/2))/(2*p*(2-p))",
+      "zhang"="AET.P~(1+p*PET.P)/(1+p*PET.P+(PET.P^(-1)))"
+    )[[tolower(method)]]
+    startval = list(
+      "fu"=list(p=2.7),
+      "turc-pike"=list(p=1.9),
+      "wang-tang"=list(p=0.59),
+      "zhang"=list(p=1.4)
+    )[[tolower(method)]]
+    budykoNLS = stats::nls(formula = formula,
+                           start = startval,
+                           data = data)
+    fiterrorbounds = do.call("rbind",lapply(1:2,function(i){
+      int = c("confidence","prediction")[i]
+      dt = data.frame(PET.P=seq(0,10,0.01))
+      cd = cbind(dt,investr::predFit(budykoNLS,dt,interval=int,level=(1-alpha)))
+      if(i==1){jval=1:3}
+      if(i==2){jval=2:3}
+      do.call("rbind",lapply(jval,function(j){
+        lim = c("fit","lwr","upr")[j]
+        cd2 = cd[,c("PET.P",lim)]
+        #cd = data.table::setorder(cd,PET.P)
+        if(j==3){cd2 = as.data.frame(purrr::map_df(cd2,rev))}
+        names(cd2)[2]="AET.P"
+        cd2$key = ifelse(j==1,"fit",int)
+        return(cd2)
+      }))
+    }))
+  }
+  if(dif %in% c("rsq","mae")){
+    err=fit[2,]
+    if(hshift==TRUE){hs=fit[4,]}else{hs=0}
+    fitdata=budyko_sim(fit=fit,method = tolower(names(fit)),hshift = hshift,res = res)
+    fiterrorbounds=data.frame(
+      PET.P=c(fitdata$PET.P,rev(fitdata$PET.P)),
+      AET.P=c((fitdata$AET.P+err),rev(fitdata$AET.P-err))
+    )
+    #fiterrorbounds$AET.P[fiterrorbounds$AET.P>=1]=1
+    #fiterrorbounds$AET.P[fiterrorbounds$AET.P<=0]=0
+    for(p in seq(0,1,0.01)){fiterrorbounds$AET.P[fiterrorbounds$PET.P==p & fiterrorbounds$AET.P>=p]=p}
+  }
   return(fiterrorbounds)
 }
