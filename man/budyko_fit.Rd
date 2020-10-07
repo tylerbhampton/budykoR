@@ -7,7 +7,7 @@
 budyko_fit(
   data,
   method,
-  dif = "rsq",
+  dif = "nls",
   res = NULL,
   hshift = FALSE,
   hs = NULL,
@@ -22,7 +22,7 @@ or one minus the runoff coefficient (Q/P)}
 
 \item{method}{A string. One of the following: Fu, Turc-Pike, Wang-Tang}
 
-\item{dif}{A string. One of the following: "rsq" (default) or "mae", defining best fit by Pearson's R squared or Minimum Mean Absolute Error}
+\item{dif}{A string. One of the following: "nls" (default) "rsq" "mae". Determines whether to fit automatically with stats::nls, or manually, with best fit determined by either Pearson's R squared or Minimum Mean Absolute Error}
 
 \item{res}{\link{numeric} resolution of fit, defaults to 0.01 units}
 

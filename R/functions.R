@@ -83,7 +83,7 @@ budyko_sim=function(p=2,fit=NULL,method="budyko",res=0.01,hshift=FALSE,hs=NULL,s
 #' dimensionless), and "AET.P" for actual evapotranspiration divided by precipitation
 #' or one minus the runoff coefficient (Q/P)
 #' @param method A string. One of the following: Fu, Turc-Pike, Wang-Tang
-#' @param dif A string. One of the following: "rsq" (default) or "mae", defining best fit by Pearson's R squared or Minimum Mean Absolute Error
+#' @param dif A string. One of the following: "nls" (default) "rsq" "mae". Determines whether to fit automatically with stats::nls, or manually, with best fit determined by either Pearson's R squared or Minimum Mean Absolute Error
 #' @param res [numeric] resolution of fit, defaults to 0.01 units
 #' @param hshift A boolean.  T/F (default F), whether to test for horizontal shift
 #' @param hs [numeric] optional horizontal shift value
@@ -126,8 +126,8 @@ budyko_fit=function(data,method,dif="nls",res=NULL,hshift=FALSE,hs=NULL,silent=F
                              start = startval,
                              data = data)
       paramval = summary(budykoNLS)$coefficients[[1]]
-      fitmae = mean(abs(residuals(budykoNLS)))
-      fitrsq = summary(lm(data$AET.P~fitted(budykoNLS)))$r.squared
+      fitmae = mean(abs(stats::residuals(budykoNLS)))
+      fitrsq = summary(stats::lm(data$AET.P~fitted(budykoNLS)))$r.squared
       fitdat=as.data.frame(c(
         "param"=paramval,
         "mae"=round(fitmae,4),
@@ -145,7 +145,7 @@ budyko_fit=function(data,method,dif="nls",res=NULL,hshift=FALSE,hs=NULL,silent=F
           test=budyko_sim(fit=fit,method=method,res=res)
           AETPest=sapply((data$PET.P),function(z){test$AET.P[round(test$PET.P,-log10(res))==round(z,-log10(res))]})
           return(data.frame(
-            rsq=1-summary(lm(AETPest~data$AET.P))$r.squared,
+            rsq=1-summary(stats::lm(AETPest~data$AET.P))$r.squared,
             mae=mean(abs(data$AET.P-AETPest))
           ))
         }))
@@ -190,19 +190,30 @@ budyko_fit=function(data,method,dif="nls",res=NULL,hshift=FALSE,hs=NULL,silent=F
 #' @param res [numeric] resolution of fit, defaults to 0.01 units
 #' @param hshift A boolean.  T/F (default F), whether to test for horizontal shift.
 #' hs value must be defined in fit
+#' @param dif A string. One of the following: "nls" (default) "rsq" "mae". Determines whether 
+#' to fit automatically with stats::nls, or manually, with best fit determined by either 
+#' Pearson's R squared or Minimum Mean Absolute Error
+#' @param data [list] dataframe requiring the following two columns: "PET.P" for
+#' potential evapotranspiration divided by precipitation (units normalized,
+#' dimensionless), and "AET.P" for actual evapotranspiration divided by precipitation
+#' or one minus the runoff coefficient (Q/P)
+#' @param alpha [numeric] If using dif="nls", confidence value for bounds. Default to 0.05 (95% confidence)
+#' @param method A string. One of the following: Fu, Turc-Pike, Wang-Tang
 #' @examples
 #' library(ggplot2)
-#' fit=budyko_fit(data=testdata,method="Fu")
+#' fitdata = budyko_errbounds(data=testdata,method="Fu")
 #' blankBC+
-#'   geom_polygon(data=budyko_errbounds(fit),fill="gray")+
-#'   geom_line(data=budyko_sim(fit=fit))+
+#'   geom_polygon(data=subset(fitdata,key!="fit"),aes(lty=key),
+#'                col=1,fill="transparent")+
+#'   geom_line(data=subset(fitdata,key=="fit"),aes(lty="fit"))+
+#'   scale_linetype_manual(values=c("fit"=1,"confidence"=2,"prediction"=3))+
 #'   geom_point(data=testdata)+
-#'   coord_cartesian(xlim=c(0,5))
+#'   coord_cartesian(xlim=c(0,5),ylim=c(0,1))
 #' @md
 #' @export
 
 budyko_errbounds=function(fit=NULL,res=0.1,hshift=FALSE,
-                          dif="nls",data=NULL,alpha=0.05){
+                          dif="nls",data=NULL,alpha=0.05,method=NULL){
   if(dif=="nls"){
     data=data[,c("AET.P","PET.P")]
     data=data[!is.na(data$AET.P),]
@@ -254,3 +265,4 @@ budyko_errbounds=function(fit=NULL,res=0.1,hshift=FALSE,
   }
   return(fiterrorbounds)
 }
+

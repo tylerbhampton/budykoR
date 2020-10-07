@@ -4,7 +4,15 @@
 \alias{budyko_errbounds}
 \title{Generate errorbounds from a Budyko fit}
 \usage{
-budyko_errbounds(fit, res = 0.1, hshift = FALSE)
+budyko_errbounds(
+  fit = NULL,
+  res = 0.1,
+  hshift = FALSE,
+  dif = "nls",
+  data = NULL,
+  alpha = 0.05,
+  method = NULL
+)
 }
 \arguments{
 \item{fit}{\link{list} dataframe object with names() method and entries
@@ -15,6 +23,19 @@ optional hshift value (default to zero)}
 
 \item{hshift}{A boolean.  T/F (default F), whether to test for horizontal shift.
 hs value must be defined in fit}
+
+\item{dif}{A string. One of the following: "nls" (default) "rsq" "mae". Determines whether
+to fit automatically with stats::nls, or manually, with best fit determined by either
+Pearson's R squared or Minimum Mean Absolute Error}
+
+\item{data}{\link{list} dataframe requiring the following two columns: "PET.P" for
+potential evapotranspiration divided by precipitation (units normalized,
+dimensionless), and "AET.P" for actual evapotranspiration divided by precipitation
+or one minus the runoff coefficient (Q/P)}
+
+\item{alpha}{\link{numeric} If using dif="nls", confidence value for bounds. Default to 0.05 (95\% confidence)}
+
+\item{method}{A string. One of the following: Fu, Turc-Pike, Wang-Tang}
 }
 \value{
 Given a "fit" dataframe object from budyko::budyko_fit,
@@ -26,10 +47,12 @@ Generate errorbounds from a Budyko fit
 }
 \examples{
 library(ggplot2)
-fit=budyko_fit(data=testdata,method="Fu")
+fitdata = budyko_errbounds(data=testdata,method="Fu")
 blankBC+
-  geom_polygon(data=budyko_errbounds(fit),fill="gray")+
-  geom_line(data=budyko_sim(fit=fit))+
+  geom_polygon(data=subset(fitdata,key!="fit"),aes(lty=key),
+               col=1,fill="transparent")+
+  geom_line(data=subset(fitdata,key=="fit"),aes(lty="fit"))+
+  scale_linetype_manual(values=c("fit"=1,"confidence"=2,"prediction"=3))+
   geom_point(data=testdata)+
-  coord_cartesian(xlim=c(0,5))
+  coord_cartesian(xlim=c(0,5),ylim=c(0,1))
 }
