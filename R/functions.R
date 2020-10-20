@@ -105,8 +105,9 @@ budyko_fit=function(data,method,dif="nls",res=NULL,hshift=FALSE,hs=NULL,silent=F
     if(silent==FALSE){print(paste0("Budyko Fit: method = ",method))}
     if(is.null(res)){res=0.01}
     data=data[,c("AET.P","PET.P")]
-    data=data[!is.na(data$AET.P),]
-    data=data[data$PET.P<=20,]
+    data = subset(data,!is.na(AET.P))
+    data = subset(data,PET.P<=20)
+    data = subset(data,!(AET.P>PET.P))
     data=data[order(data$PET.P),]
 
     if(dif=="nls"){
