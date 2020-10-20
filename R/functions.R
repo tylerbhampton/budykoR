@@ -217,8 +217,9 @@ budyko_errbounds=function(fit=NULL,res=0.1,hshift=FALSE,
                           dif="nls",data=NULL,alpha=0.05,method=NULL){
   if(dif=="nls"){
     data=data[,c("AET.P","PET.P")]
-    data=data[!is.na(data$AET.P),]
-    data=data[data$PET.P<=20,]
+    data = subset(data,!is.na(AET.P))
+    data = subset(data,PET.P<=20)
+    data = subset(data,!(AET.P>PET.P))
     data=data[order(data$PET.P),]
     formula = list(
       "fu"="AET.P~1+PET.P-(1+(PET.P)^p)^(1/p)",
