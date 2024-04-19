@@ -13,8 +13,6 @@
 #' @docType data
 #' @examples
 #' library(ggplot2)
-#' blankBC=ggplot(data=data.frame(PET.P=seq(0,20,1),AET.P=c(0,rep(1,20))),aes(x=PET.P,y=AET.P))+
-#' geom_line()+xlab("Aridity Index")+ylab("Evaporative Index")
 #' blankBC+coord_cartesian(xlim=c(0,2))+geom_vline(xintercept=1,lty=2)+
 #'     geom_text(data=data.frame(
 #'         labels=c("Energy Limited","Water Limited"),
